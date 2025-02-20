@@ -1,28 +1,22 @@
 import java.nio.charset.StandardCharsets;
-import javax.jms.BytesMessage;
-import javax.jms.Message;
-import javax.jms.TextMessage;
+import org.apache.jmeter.samplers.SampleResult;
 
-Message response = prev.getObject();  // Get the JMS message object
+SampleResult result = prev; // Get the previous sampler result
+byte[] rawBytes = result.getResponseData(); // Extract raw bytes from ResponseData
 
-if (response instanceof BytesMessage) {
-    BytesMessage byteMessage = (BytesMessage) response;
-    
-    // Read bytes correctly
-    int length = (int) byteMessage.getBodyLength();
-    byte[] data = new byte[length];
-    byteMessage.readBytes(data);
+if (rawBytes != null && rawBytes.length > 0) {
+    try {
+        // Convert bytes to a UTF-8 string
+        String messageText = new String(rawBytes, StandardCharsets.UTF_8);
 
-    // Convert bytes to UTF-8 String
-    String messageText = new String(data, StandardCharsets.UTF_8);
+        // Log the extracted message
+        log.info("Extracted ByteMessage: " + messageText);
 
-    // Log and store the message for JMeter UI
-    log.info("Received ByteMessage: " + messageText);
-    vars.put("JMS_Message", messageText);
-} else if (response instanceof TextMessage) {
-    String text = ((TextMessage) response).getText();
-    log.info("Received TextMessage: " + text);
-    vars.put("JMS_Message", text);
+        // Store the message in a JMeter variable for UI display
+        vars.put("JMS_Message", messageText);
+    } catch (Exception e) {
+        log.error("Error while decoding ByteMessage: " + e.getMessage());
+    }
 } else {
-    log.warn("Received unknown message type: " + response.getClass().getName());
+    log.warn("No bytes received from JMS Topic.");
 }
